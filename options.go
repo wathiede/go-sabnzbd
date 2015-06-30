@@ -16,6 +16,13 @@ func UseHttps() Option {
 	}
 }
 
+func UseInsecureHTTP() Option {
+	return func(s *Sabnzbd) error {
+		s.useInsecureHttp()
+		return nil
+	}
+}
+
 func Addr(addr string) Option {
 	return func(s *Sabnzbd) error {
 		return s.setAddr(addr)

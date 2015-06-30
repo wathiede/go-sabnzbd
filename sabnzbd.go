@@ -1,6 +1,7 @@
 package sabnzbd
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net"
@@ -10,11 +11,12 @@ import (
 )
 
 type Sabnzbd struct {
-	mu    sync.RWMutex
-	https bool
-	addr  string
-	path  string
-	auth  authenticator
+	mu       sync.RWMutex
+	https    bool
+	insecure bool
+	addr     string
+	path     string
+	auth     authenticator
 }
 
 func New(options ...Option) (s *Sabnzbd, err error) {
@@ -47,6 +49,12 @@ func (s *Sabnzbd) useHttps() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.https = true
+}
+
+func (s *Sabnzbd) useInsecureHttp() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.insecure = true
 }
 
 func (s *Sabnzbd) useHttp() {
@@ -83,8 +91,9 @@ func (s *Sabnzbd) setAuth(a authenticator) error {
 
 type sabnzbdURL struct {
 	*url.URL
-	v    url.Values
-	auth authenticator
+	v         url.Values
+	auth      authenticator
+	transport *http.Transport
 }
 
 func (s *Sabnzbd) url() *sabnzbdURL {
@@ -96,11 +105,17 @@ func (s *Sabnzbd) url() *sabnzbdURL {
 			Host:   s.addr,
 			Path:   s.path,
 		},
-		auth: s.auth,
+		auth:      s.auth,
+		transport: &http.Transport{},
 	}
 	if s.https {
 		su.Scheme = "https"
 	}
+
+	if s.insecure {
+		su.Unsecure()
+	}
+
 	su.v = su.URL.Query()
 	return su
 }
@@ -122,8 +137,15 @@ func (su *sabnzbdURL) String() string {
 	return su.URL.String()
 }
 
+func (su *sabnzbdURL) Unsecure() {
+	su.transport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+}
+
 func (su *sabnzbdURL) CallJSON(r interface{}) error {
-	resp, err := http.Get(su.String())
+	httpClient := &http.Client{Transport: su.transport}
+	resp, err := httpClient.Get(su.String())
 	if err != nil {
 		return err
 	}
@@ -141,7 +163,8 @@ func (su *sabnzbdURL) CallJSON(r interface{}) error {
 }
 
 func (su *sabnzbdURL) CallJSONMultipart(reader io.Reader, contentType string, r interface{}) error {
-	resp, err := http.Post(su.String(), contentType, reader)
+	httpClient := &http.Client{Transport: su.transport}
+	resp, err := httpClient.Post(su.String(), contentType, reader)
 	if err != nil {
 		return err
 	}
