@@ -3,11 +3,8 @@ package sabnzbd
 import (
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
-	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -209,6 +206,7 @@ type addNzbConfig struct {
 	XCategory       *string
 	Priority        *int
 	NzbName         *string
+	Name            *string
 }
 
 func (c *addNzbConfig) options() map[string]string {
@@ -230,6 +228,9 @@ func (c *addNzbConfig) options() map[string]string {
 	}
 	if c.NzbName != nil {
 		opts["nzbname"] = *c.NzbName
+	}
+	if c.Name != nil {
+		opts["name"] = *c.Name
 	}
 	return opts
 }
@@ -274,6 +275,13 @@ func AddNzbPriority(priority int) AddNzbOption {
 func AddNzbName(name string) AddNzbOption {
 	return func(c *addNzbConfig) error {
 		c.NzbName = &name
+		return nil
+	}
+}
+
+func AddNzbUrl(url string) AddNzbOption {
+	return func(c *addNzbConfig) error {
+		c.Name = &url
 		return nil
 	}
 }
@@ -328,23 +336,24 @@ func (s *Sabnzbd) AddReader(reader io.Reader, filename string, options ...AddNzb
 	return r.NzoIDs, err
 }
 
-func (s *Sabnzbd) AddURL(url string, options ...AddNzbOption) (nzoids []string, err error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	filename := path.Base(url)
-
-	// check for a filename in the Content-Disposition header
-	disposition := resp.Header.Get("Content-Disposition")
-	_, params, err := mime.ParseMediaType(disposition)
-	if err == nil {
-		if name, ok := params["filename"]; ok {
-			filename = name
+func (s *Sabnzbd) AddURL(options ...AddNzbOption) (nzoids []string, err error) {
+	u := s.url()
+	u.SetJsonOutput()
+	u.Authenticate()
+	u.SetMode("addurl")
+	c := &addNzbConfig{}
+	for _, option := range options {
+		if err := option(c); err != nil {
+			return nil, err
 		}
 	}
-	return s.AddReader(resp.Body, filename, options...)
+	for k, v := range c.options() {
+		u.v.Set(k, v)
+	}
+
+	r := &addFileResponse{}
+	err = u.CallJSON(r)
+	return r.NzoIDs, err
 }
 
 func (s *Sabnzbd) AddFile(filename string, options ...AddNzbOption) (nzoids []string, err error) {
