@@ -3,7 +3,9 @@ package sabnzbd
 import (
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -145,15 +147,17 @@ func (su *sabnzbdURL) Unsecure() {
 
 func (su *sabnzbdURL) CallJSON(r interface{}) error {
 	httpClient := &http.Client{Transport: su.transport}
+	//fmt.Printf("GET URL: %s", su.String())
 	resp, err := httpClient.Get(su.String())
 	if err != nil {
-		return err
+		return fmt.Errorf("sabnzbdURL:CallJSON: failed to get: %s: %v", su.String(), err)
 	}
 	defer resp.Body.Close()
+	//fmt.Printf("Status: %v\n", resp.Status)
 
 	decoder := json.NewDecoder(resp.Body)
 	if err = decoder.Decode(r); err != nil {
-		return err
+		return fmt.Errorf("sabnzbdURL:CallJSON: failed to decode json: %v", err)
 	}
 	if err, ok := r.(error); ok {
 		return apiStringError(err.Error())
@@ -164,15 +168,23 @@ func (su *sabnzbdURL) CallJSON(r interface{}) error {
 
 func (su *sabnzbdURL) CallJSONMultipart(reader io.Reader, contentType string, r interface{}) error {
 	httpClient := &http.Client{Transport: su.transport}
+	//fmt.Printf("POST URL: %s", su.String())
 	resp, err := httpClient.Post(su.String(), contentType, reader)
 	if err != nil {
-		return err
+		return fmt.Errorf("sabnzbdURL:CallJSONMultipart: failed to post: %s: %v", su.String(), err)
 	}
 	defer resp.Body.Close()
 
-	decoder := json.NewDecoder(resp.Body)
-	if err = decoder.Decode(r); err != nil {
-		return err
+	//fmt.Printf("Status: %v\n", resp.Status)
+	respStr, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("sabnzbdURL:CallJSONMultipart: failed to read response: %v", err)
+	}
+	//fmt.Printf("Resp: %s\n", respStr)
+
+	//decoder := json.NewDecoder(resp.Body)
+	if err = json.Unmarshal(respStr, r); err != nil {
+		return fmt.Errorf("sabnzbdURL:CallJSONMultipart: failed to decode json: %v", err)
 	}
 	if err, ok := r.(error); ok {
 		return apiStringError(err.Error())
