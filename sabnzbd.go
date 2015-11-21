@@ -155,9 +155,14 @@ func (su *sabnzbdURL) CallJSON(r interface{}) error {
 	defer resp.Body.Close()
 	//fmt.Printf("Status: %v\n", resp.Status)
 
-	decoder := json.NewDecoder(resp.Body)
-	if err = decoder.Decode(r); err != nil {
-		return fmt.Errorf("sabnzbdURL:CallJSON: failed to decode json: %v", err)
+	//decoder := json.NewDecoder(resp.Body)
+	respStr, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("sabnzbdURL:CallJSON: failed to read response: %v", err)
+	}
+
+	if err = json.Unmarshal(respStr, r); err != nil {
+		return fmt.Errorf("sabnzbdURL:CallJSON: failed to decode json: %v: %s", err, string(respStr))
 	}
 	if err, ok := r.(error); ok {
 		return apiStringError(err.Error())
@@ -184,7 +189,7 @@ func (su *sabnzbdURL) CallJSONMultipart(reader io.Reader, contentType string, r 
 
 	//decoder := json.NewDecoder(resp.Body)
 	if err = json.Unmarshal(respStr, r); err != nil {
-		return fmt.Errorf("sabnzbdURL:CallJSONMultipart: failed to decode json: %v", err)
+		return fmt.Errorf("sabnzbdURL:CallJSONMultipart: failed to decode json: %v: %s", err, string(respStr))
 	}
 	if err, ok := r.(error); ok {
 		return apiStringError(err.Error())

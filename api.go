@@ -267,7 +267,7 @@ func AddNzbXCategory(xcategory string) AddNzbOption {
 
 func AddNzbPriority(priority int) AddNzbOption {
 	return func(c *addNzbConfig) error {
-		*c.Priority = priority
+		c.Priority = &priority
 		return nil
 	}
 }
