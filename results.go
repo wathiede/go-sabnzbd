@@ -294,7 +294,7 @@ type HistorySlot struct {
 	Report             string            `json:"report"`
 	Path               string            `json:"path"`
 	PostProcessingTime int               `json:"postproc_time"` // change to time.Duration
-	Name               string            `json:"ubuntu"`
+	Name               string            `json:"name"`
 	URL                string            `json:"url"`
 	Bytes              int               `json:"bytes"`
 	URLInfo            string            `json:"url_info"`
