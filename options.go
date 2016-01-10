@@ -16,6 +16,14 @@ func UseHttps() Option {
 	}
 }
 
+func UseHTTPAuth(user, pass string) Option {
+	return func(s *Sabnzbd) error {
+		s.httpUser = user
+		s.httpPass = pass
+		return nil
+	}
+}
+
 func UseInsecureHTTP() Option {
 	return func(s *Sabnzbd) error {
 		s.useInsecureHttp()

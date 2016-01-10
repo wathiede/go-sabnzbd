@@ -19,6 +19,8 @@ type Sabnzbd struct {
 	addr     string
 	path     string
 	auth     authenticator
+	httpUser string
+	httpPass string
 }
 
 func New(options ...Option) (s *Sabnzbd, err error) {
@@ -112,6 +114,10 @@ func (s *Sabnzbd) url() *sabnzbdURL {
 	}
 	if s.https {
 		su.Scheme = "https"
+	}
+
+	if s.httpUser != "" {
+		su.User = url.UserPassword(s.httpUser, s.httpPass)
 	}
 
 	if s.insecure {
