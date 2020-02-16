@@ -272,38 +272,56 @@ func (r *HistoryResponse) UnmarshalJSON(data []byte) error {
 }
 
 type HistorySlot struct {
-	ActionLine         string            `json:"action_line"`
-	ShowDetails        string            `json:"show_details"`
-	ScriptLog          string            `json:"script_log"`
-	FailMessage        string            `json:"fail_message"`
-	Loaded             bool              `json:"loaded"`
-	ID                 int               `json:"id"`
-	Size               string            `json:"size"`
-	Category           string            `json:"category"`
-	PP                 string            `json:"pp"`
-	Completeness       int               `json:"completeness"`
-	Script             string            `json:"script"`
-	NZBName            string            `json:"nzb_name"`
-	DownloadTime       int               `json:"download_time"` // change to time.Duration
-	Storage            string            `json:"storage"`
-	Status             string            `json:"status"`
-	ScriptLine         string            `json:"script_line"`
-	Completed          int               `json:"completed"` // change to time.Time
-	NzoID              string            `json:"nzo_id"`
-	Downloaded         int               `json:"downloaded"` // change to time.Time
-	Report             string            `json:"report"`
-	Path               string            `json:"path"`
-	PostProcessingTime int               `json:"postproc_time"` // change to time.Duration
-	Name               string            `json:"name"`
-	URL                string            `json:"url"`
-	Bytes              int               `json:"bytes"`
-	URLInfo            string            `json:"url_info"`
-	StageLogs          []HistoryStageLog `json:"stage_log"`
+	ActionLine         string               `json:"action_line"`
+	ShowDetails        string               `json:"show_details"`
+	ScriptLog          string               `json:"script_log"`
+	FailMessage        string               `json:"fail_message"`
+	Loaded             bool                 `json:"loaded"`
+	ID                 int                  `json:"id"`
+	Size               string               `json:"size"`
+	Category           string               `json:"category"`
+	PP                 string               `json:"pp"`
+	Completeness       int                  `json:"completeness"`
+	Script             string               `json:"script"`
+	NZBName            string               `json:"nzb_name"`
+	DownloadTime       int                  `json:"download_time"` // change to time.Duration
+	Storage            string               `json:"storage"`
+	Status             string               `json:"status"`
+	ScriptLine         string               `json:"script_line"`
+	Completed          int                  `json:"completed"` // change to time.Time
+	NzoID              string               `json:"nzo_id"`
+	Downloaded         int                  `json:"downloaded"` // change to time.Time
+	Report             string               `json:"report"`
+	Path               string               `json:"path"`
+	PostProcessingTime int                  `json:"postproc_time"` // change to time.Duration
+	Name               string               `json:"name"`
+	URL                string               `json:"url"`
+	Bytes              int                  `json:"bytes"`
+	URLInfo            string               `json:"url_info"`
+	StageLogs          HistoryStageLogSlice `json:"stage_log"`
 }
 
+type HistoryStageLogSlice []HistoryStageLog
 type HistoryStageLog struct {
 	Name    string   `json:"name"`
 	Actions []string `json:"actions"`
+}
+
+// UnmarshalJSON handles the fact that sabnzbd returns "" instead of [] when
+// there are no stage logs for a given HistorySlot.
+func (hsls *HistoryStageLogSlice) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		// If b decodes as a string we've received an empty list as "", do
+		// nothing.
+		return nil
+	}
+	var hsl []HistoryStageLog
+	if err := json.Unmarshal(b, &hsl); err != nil {
+		return err
+	}
+	*hsls = hsl
+	return nil
 }
 
 type warningsResponse struct {
